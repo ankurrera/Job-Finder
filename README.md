@@ -40,6 +40,6 @@ An advanced real-time job acquisition engine built with **Google Apps Script** a
      MIN_MATCH_SCORE: 70
    };
    ```
-4. Click **Run** on `recreateSheetDashboard` to initialize the 2-tab layout.
-5. Click **Run** on `findRealtimeJobs` to execute a manual job search pass!
-6. Click **Run** on `setupHourlyJobTrigger` to enable automated hourly job monitoring.
+4. Click **Run** on `initializeDashboard` to initialize the 2-tab layout.
+5. Click **Run** on `runJobSearch` to execute a manual job search pass!
+6. Click **Run** on `setupHourlyTrigger` to enable automated hourly job monitoring.

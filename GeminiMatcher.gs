@@ -5,7 +5,7 @@
 
 const GeminiMatcher = {
   /**
-   * Hard Exclusion List for Senior / Experienced Roles
+   * Exclusion list for senior / experienced roles
    */
   SENIOR_KEYWORDS: [
     "senior", "sr.", "sr ", "lead", "principal", "architect", 
@@ -17,9 +17,9 @@ const GeminiMatcher = {
   ],
 
   /**
-   * Checks if a job title explicitly requires experience beyond Freshers (0-1 YOE)
+   * Checks if a role explicitly requires experience beyond Freshers (0-1 YOE)
    */
-  isSeniorJob: function(job) {
+  isSeniorRole: function(job) {
     const text = (job.title + " " + (job.summary || "") + " " + (job.experience || "") + " " + (job.searchRole || "")).toLowerCase();
     for (let i = 0; i < this.SENIOR_KEYWORDS.length; i++) {
       if (text.includes(this.SENIOR_KEYWORDS[i])) {
@@ -27,7 +27,6 @@ const GeminiMatcher = {
       }
     }
 
-    // Hard-reject experience requirements >= 2 years (e.g. "2+ years", "2-3 yoe", "3 to 5 years")
     if (text.match(/([2-9]|1[0-9])\s*(?:\+|\-|to)\s*([0-9]+)?\s*(?:year|yoe|yrs)/i)) {
       if (!text.includes("0-1") && !text.includes("0 to 1") && !text.includes("0-2") && !text.includes("fresher")) {
         return true;
@@ -38,11 +37,10 @@ const GeminiMatcher = {
   },
 
   /**
-   * Evaluates job title & metadata relevance using Gemini API with 100% Fresher & CGPA Precision
+   * Evaluates job relevance and extract package/skills using Gemini 2.0 Flash AI
    */
-  evaluateJob: function(job, targetRoles, apiKey, candidateProfile) {
-    // 0. Instant Top Match Score for Active Competitive Exams & Hiring Drives (TCS NQT, InfyTQ, Assessment Drives)
-    if (job.isExamDrive || SheetNotifier.isCompetitiveExam(job)) {
+  evaluate: function(job, targetRoles, apiKey, candidateProfile) {
+    if (job.isExamDrive || SheetNotifier.isExamOrDrive(job)) {
       return {
         score: 95,
         salary: "Standard Entry Package (3.6 - 9.0 LPA)",
@@ -54,8 +52,7 @@ const GeminiMatcher = {
       };
     }
 
-    // 1. HARD PRE-FILTER: Reject experienced roles (2+ YOE) instantly
-    if (this.isSeniorJob(job)) {
+    if (this.isSeniorRole(job)) {
       return {
         score: 0,
         salary: "Not Disclosed",
@@ -67,17 +64,16 @@ const GeminiMatcher = {
       };
     }
 
-    // 2. Fallback to heuristic scoring if API key is missing
     if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY" || apiKey.trim() === "") {
-      return this.heuristicEvaluate(job, targetRoles);
+      return this.evaluateHeuristic(job, targetRoles);
     }
 
     const targetList = targetRoles.join(", ");
     const candidateInfo = candidateProfile ? 
       `Candidate Profile:
 - Degree: ${candidateProfile.DEGREE || 'B.Tech in Computer Science & Engineering (CSE)'}
-- CGPA: ${candidateProfile.CGPA || 7.38} / 10 (73.8%) - Fully eligible for MNC cutoffs (TCS 60%, Accenture 65%, Capgemini 60%, EY 60%, Infosys 60%)
-- Passout Batch: ${candidateProfile.PASSOUT_YEAR || '2026'} Batch Passout (Eligible for 2026 & 2025 off-campus drives)
+- CGPA: ${candidateProfile.CGPA || 7.38} / 10 (73.8%) - Eligible for MNC cutoffs
+- Passout Batch: ${candidateProfile.PASSOUT_YEAR || '2026'} Batch Passout
 - Target Status: ${candidateProfile.TARGET_STATUS || 'Fresher / 2026 Batch Passout (0-1 YOE Max)'}` : 
       'Candidate Profile: 2026 Batch B.Tech CSE Fresher (7.38 CGPA / 73.8%)';
 
@@ -91,27 +87,23 @@ Enterprise MNC Target: TCS, Accenture, Capgemini, EY, Infosys, Wipro, Cognizant,
 Location Focus: India ONLY (Bangalore, Hyderabad, Chennai, Kolkata, Delhi, Gurgaon, Pune, Mumbai, Noida). Reject any job that is outside India or requires physical relocation abroad.
 
 STRICT EVALUATION INSTRUCTIONS:
-1. "isFresherFriendly": Must be true ONLY IF this job is suitable for a 2026 or 2025 Batch Passout / Fresher / Recent Graduate (0 to 1 YOE Max — System Engineer, Associate Software Engineer, Graduate Trainee, Technology Analyst, Software Developer). HARD REJECT if it requires 2+ years of experience, senior expertise, or leadership.
-2. "batchPassoutCheck": Candidate is a 2026 Batch Passout. Jobs for 2026 Batch, 2025 Batch, or Freshers are FULLY ELIGIBLE. If a job explicitly says "Only 2023 or older batches", set isFresherFriendly to false.
-3. "cgpaEligibilityCheck": Candidate CGPA is 7.38 (73.8%) — passes all MNC cutoffs (TCS 60%, Accenture 65%, Capgemini 60%, EY 60%, Infosys 60%). ONLY set isFresherFriendly to false if the job explicitly mandates strictly MORE than 7.38 CGPA (e.g. "8.0+ CGPA" or "80%+ throughout ALL boards").
-4. "indiaLocationCheck": Job MUST be India-based (on-site, hybrid, or India-remote). If the job is physically located outside India or requires international relocation, set isFresherFriendly to false.
-5. "score":
-   - If "isFresherFriendly" is false, score MUST be 0.
-   - If "isFresherFriendly" is true and candidate meets experience, batch (2026), & CGPA eligibility, score MUST be 85 to 100.
-   - If "isFresherFriendly" is true but partially meets criteria (e.g. CGPA cutoff borderline), score MUST be 70 to 84.
+1. "isFresherFriendly": Must be true ONLY IF this job is suitable for a 2026 or 2025 Batch Passout / Fresher / Recent Graduate (0 to 1 YOE Max). HARD REJECT if it requires 2+ years of experience.
+2. "batchPassoutCheck": Candidate is a 2026 Batch Passout. Jobs for 2026 Batch, 2025 Batch, or Freshers are FULLY ELIGIBLE.
+3. "cgpaEligibilityCheck": Candidate CGPA is 7.38 (73.8%). ONLY reject if the job explicitly mandates > 7.38 CGPA.
+4. "indiaLocationCheck": Job MUST be India-based.
+5. "score": 0 if not fresher friendly, 85-100 if fully eligible, 70-84 if borderline.
 
 Return a valid JSON object with:
 {
   "isFresherFriendly": true or false,
   "score": integer (0-100),
   "salary": "estimated package or Not Disclosed",
-  "experience": "required YOE (e.g. Fresher / 0 YOE, 0-1 YOE, 2+ YOE)",
+  "experience": "required YOE (e.g. Fresher / 0-1 YOE)",
   "workMode": "Remote (India)", "Hybrid", or "On-site",
   "matchingSkills": ["Skill1", "Skill2"],
   "missingSkills": ["Requirement1"],
   "summary": "1 sentence explanation"
 }
-
 Return ONLY single valid JSON object. No markdown fences.`;
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
@@ -133,7 +125,6 @@ Return ONLY single valid JSON object. No markdown fences.`;
         let finalScore = parsed.isFresherFriendly === false ? 0 : (parsed.score || 70);
         const expStr = String(parsed.experience || "").toLowerCase();
 
-        // HARD REJECT for any experience requirement >= 2 years (e.g. "2+ years", "2-3 YOE", "3-5 YOE")
         if (expStr.match(/([2-9]|1[0-9])\s*(?:\+|\-|to)\s*([0-9]+)?\s*(?:year|yoe|yrs)/i) || 
             expStr.includes("2+") || expStr.includes("3+") || expStr.includes("4+") || expStr.includes("5+") || 
             expStr.includes("2-3") || expStr.includes("3-5") || expStr.includes("2 to 4") || expStr.includes("3 to 8")) {
@@ -157,14 +148,14 @@ Return ONLY single valid JSON object. No markdown fences.`;
       console.warn(`Gemini evaluation error for "${job.title}": ${err.toString()}`);
     }
 
-    return this.heuristicEvaluate(job, targetRoles);
+    return this.evaluateHeuristic(job, targetRoles);
   },
 
   /**
-   * Fallback heuristic rule-based evaluator with 100% Fresher Precision
+   * Fallback rule-based evaluator when Gemini API key is not configured
    */
-  heuristicEvaluate: function(job, targetRoles) {
-    if (this.isSeniorJob(job)) {
+  evaluateHeuristic: function(job, targetRoles) {
+    if (this.isSeniorRole(job)) {
       return {
         score: 0,
         salary: "Not Disclosed",
@@ -178,7 +169,6 @@ Return ONLY single valid JSON object. No markdown fences.`;
 
     const titleLower = job.title.toLowerCase();
 
-    // Explicit Fresher / Entry-Level & Core Engineering Keywords
     const isFresherRole = titleLower.includes("fresher") ||
                           titleLower.includes("trainee") ||
                           titleLower.includes("junior") ||
@@ -210,15 +200,13 @@ Return ONLY single valid JSON object. No markdown fences.`;
                           titleLower.includes("2026 batch") ||
                           titleLower.includes("2025 batch");
 
-    // HARD REJECT: If none of the above fresher/entry-level keywords match, score is 0.
-    // This prevents junk generic titles from slipping through when Gemini API is unavailable.
     if (!isFresherRole) {
       return {
         score: 0,
         salary: "Not Disclosed",
         experience: "Unverified YOE",
         workMode: "N/A",
-        summary: "REJECTED: Title does not match any known entry-level or fresher engineering role pattern.",
+        summary: "REJECTED: Title does not match entry-level engineering role pattern.",
         matchingSkills: "None",
         missingSkills: "Requires Gemini API key for accurate evaluation"
       };
@@ -230,13 +218,14 @@ Return ONLY single valid JSON object. No markdown fences.`;
     }
 
     return {
-      score: 88,  // Confident fresher match
+      score: 88,
       salary: "Not Disclosed",
       experience: "Fresher / 0-1 YOE",
       workMode: mode,
-      summary: `Matched explicit entry-level/fresher engineering role: ${job.title}.`,
+      summary: `Matched entry-level engineering role: ${job.title}.`,
       matchingSkills: job.searchRole || "Entry-level engineering keywords matched",
       missingSkills: "None"
     };
   }
 };
+

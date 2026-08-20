@@ -31,7 +31,7 @@ const ApplicationTracker = {
   /**
    * Initializes or resets the Application Pipeline tab with dropdown data validation
    */
-  setupPipelineTab: function(spreadsheet) {
+  setupTab: function(spreadsheet) {
     let sheet = spreadsheet.getSheetByName(this.TAB_NAME);
     if (!sheet) {
       sheet = spreadsheet.insertSheet(this.TAB_NAME);
@@ -58,25 +58,22 @@ const ApplicationTracker = {
       sheet.getRange(1, colNum).setHorizontalAlignment(this.ALIGNMENTS[c]);
     }
 
-    // Set Data Validation Dropdown for Column 1 (Status) across 100 rows
     const rule = SpreadsheetApp.newDataValidation()
       .requireValueInList(this.STATUSES, true)
       .setAllowInvalid(false)
       .build();
     
     sheet.getRange(2, 1, 100, 1).setDataValidation(rule);
+    SheetNotifier.applyStatusFormatting(sheet, 1);
 
-    // Apply Pastel Conditional Formatting for Status (Column 1)
-    SheetNotifier.applyStatusConditionalFormatting(sheet, 1);
-
-    console.log(`📊 Initialized "${this.TAB_NAME}" tab with interactive status dropdowns!`);
+    console.log(`📊 Initialized "${this.TAB_NAME}" tab.`);
     return sheet;
   },
 
   /**
-   * AUTOMATED GMAIL SYNC: Auto-updates status in Google Sheet when Gmail receives responses
+   * Syncs application status from Gmail message labels into the Google Sheet
    */
-  syncApplicationStatusFromGmail: function() {
+  syncStatusFromGmail: function() {
     const files = DriveApp.getFilesByName("Real-Time Job Finder Dashboard");
     if (!files.hasNext()) return;
 
@@ -113,17 +110,14 @@ const ApplicationTracker = {
             if (labelName === "Jobs/Interview") {
               sheet.getRange(i + 2, statusColIndex + 1).setValue("Interview Scheduled 🟡");
               updatedCount++;
-              console.log(`🟡 Auto-updated status for "${company}" -> Interview Scheduled`);
               break;
             } else if (labelName === "Jobs/Applied" && !sheet.getRange(i + 2, statusColIndex + 1).getValue()) {
               sheet.getRange(i + 2, statusColIndex + 1).setValue("Applied 🟢");
               updatedCount++;
-              console.log(`🟢 Auto-updated status for "${company}" -> Applied`);
               break;
             } else if (labelName === "Jobs/Rejected") {
               sheet.getRange(i + 2, statusColIndex + 1).setValue("Rejected 🔴");
               updatedCount++;
-              console.log(`🔴 Auto-updated status for "${company}" -> Rejected`);
               break;
             }
           }
@@ -131,6 +125,7 @@ const ApplicationTracker = {
       }
     }
 
-    console.log(`✅ Gmail status sync complete! Updated ${updatedCount} company statuses.`);
+    console.log(`✅ Gmail status sync complete. Updated ${updatedCount} statuses.`);
   }
 };
+
