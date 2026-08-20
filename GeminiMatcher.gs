@@ -7,28 +7,36 @@ const GeminiMatcher = {
   /**
    * Exclusion list for senior / experienced roles
    */
+  /**
+   * Exclusion list for senior / experienced roles
+   */
   SENIOR_KEYWORDS: [
     "senior", "sr.", "sr ", "lead", "principal", "architect", 
-    "manager", "head of", "director", "staff", "vp", "vice president",
-    "2+", "3+", "4+", "5+", "6+", "7+", "8+", "10+",
-    "2-3", "2-4", "2-5", "3-5", "4-6", "5-8", "5-10", "3-8", "4-8", 
-    "2 to 3", "2 to 4", "2 to 5", "3 to 8", "3 to 5", "3 to 6", "4 to 8", "5 to 10",
-    "2 years", "3 years", "4 years", "5 years", "6 years", "7 years", "8 years", "9 years", "10 years"
+    "manager", "head of", "director", "staff engineer", "vp", "vice president"
   ],
 
   /**
    * Checks if a role explicitly requires experience beyond Freshers (0-1 YOE)
    */
   isSeniorRole: function(job) {
-    const text = (job.title + " " + (job.summary || "") + " " + (job.experience || "") + " " + (job.searchRole || "")).toLowerCase();
+    const text = (job.title + " " + (job.summary || "") + " " + (job.experience || "")).toLowerCase();
+    
+    // Check senior title keywords
     for (let i = 0; i < this.SENIOR_KEYWORDS.length; i++) {
       if (text.includes(this.SENIOR_KEYWORDS[i])) {
-        return true;
+        // Double check if it's "junior/associate" in the same title
+        if (!text.includes("junior") && !text.includes("associate") && !text.includes("trainee") && !text.includes("fresher")) {
+          return true;
+        }
       }
     }
 
-    if (text.match(/([2-9]|1[0-9])\s*(?:\+|\-|to)\s*([0-9]+)?\s*(?:year|yoe|yrs)/i)) {
-      if (!text.includes("0-1") && !text.includes("0 to 1") && !text.includes("0-2") && !text.includes("fresher")) {
+    // Check experience years patterns (2+ years, 3-5 yrs, etc.)
+    const expMatch = text.match(/\b([2-9]|1[0-9])\s*(?:\+|\-|to)\s*([0-9]+)?\s*(?:year|yoe|yrs)/i) || 
+                     text.match(/\b([2-9]|1[0-9])\s+(?:years?|yrs|yoe)\b/i);
+    
+    if (expMatch) {
+      if (!text.includes("0-1") && !text.includes("0 to 1") && !text.includes("0-2") && !text.includes("fresher") && !text.includes("intern")) {
         return true;
       }
     }
@@ -125,7 +133,7 @@ Return ONLY single valid JSON object. No markdown fences.`;
         let finalScore = parsed.isFresherFriendly === false ? 0 : (parsed.score || 70);
         const expStr = String(parsed.experience || "").toLowerCase();
 
-        if (expStr.match(/([2-9]|1[0-9])\s*(?:\+|\-|to)\s*([0-9]+)?\s*(?:year|yoe|yrs)/i) || 
+        if (expStr.match(/\b([2-9]|1[0-9])\s*(?:\+|\-|to)\s*([0-9]+)?\s*(?:year|yoe|yrs)/i) || 
             expStr.includes("2+") || expStr.includes("3+") || expStr.includes("4+") || expStr.includes("5+") || 
             expStr.includes("2-3") || expStr.includes("3-5") || expStr.includes("2 to 4") || expStr.includes("3 to 8")) {
           if (!expStr.includes("0-1") && !expStr.includes("0 to 1") && !expStr.includes("0-2") && !expStr.includes("fresher")) {
@@ -137,7 +145,7 @@ Return ONLY single valid JSON object. No markdown fences.`;
         return {
           score: finalScore,
           salary: parsed.salary || "Not Disclosed",
-          experience: parsed.experience || "Fresher / 0-2 YOE",
+          experience: parsed.experience || "Fresher / 0-1 YOE",
           workMode: parsed.workMode || "Hybrid / Flexible",
           summary: parsed.summary || "Matches fresher candidate profile.",
           matchingSkills: (parsed.matchingSkills || []).join(", "),
@@ -159,71 +167,77 @@ Return ONLY single valid JSON object. No markdown fences.`;
       return {
         score: 0,
         salary: "Not Disclosed",
-        experience: "3+ YOE (Senior / Lead)",
+        experience: "2+ YOE (Senior / Experienced)",
         workMode: "N/A",
-        summary: "REJECTED: Contains senior/lead experience keywords.",
+        summary: "REJECTED: Contains senior or multi-year experience requirements.",
         matchingSkills: "None",
-        missingSkills: "Requires senior experience level"
+        missingSkills: "Requires prior experienced professional background"
       };
     }
 
     const titleLower = job.title.toLowerCase();
 
-    const isFresherRole = titleLower.includes("fresher") ||
-                          titleLower.includes("trainee") ||
-                          titleLower.includes("junior") ||
-                          titleLower.includes("associate") ||
-                          titleLower.includes("entry") ||
-                          titleLower.includes("intern") ||
-                          titleLower.includes("graduate") ||
-                          titleLower.includes("software engineer") ||
-                          titleLower.includes("software development engineer") ||
-                          titleLower.includes("sde") ||
-                          titleLower.includes("software developer") ||
-                          titleLower.includes("full stack") ||
-                          titleLower.includes("frontend") ||
-                          titleLower.includes("backend") ||
-                          titleLower.includes("python developer") ||
-                          titleLower.includes("java developer") ||
-                          titleLower.includes("web developer") ||
-                          titleLower.includes("system engineer") ||
-                          titleLower.includes("technology analyst") ||
-                          titleLower.includes("prompt engineer") ||
-                          titleLower.includes("ai product engineer") ||
-                          titleLower.includes("ai engineer") ||
-                          titleLower.includes("ml engineer") ||
-                          titleLower.includes("machine learning") ||
-                          titleLower.includes("generative ai") ||
-                          titleLower.includes("llm engineer") ||
-                          titleLower.includes("0-1") ||
-                          titleLower.includes("0-2") ||
-                          titleLower.includes("2026 batch") ||
-                          titleLower.includes("2025 batch");
+    // High confidence entry-level / fresher patterns
+    const isDirectFresher = titleLower.includes("fresher") ||
+                            titleLower.includes("trainee") ||
+                            titleLower.includes("junior") ||
+                            titleLower.includes("associate") ||
+                            titleLower.includes("entry") ||
+                            titleLower.includes("intern") ||
+                            titleLower.includes("graduate") ||
+                            titleLower.includes("0-1") ||
+                            titleLower.includes("0-2") ||
+                            titleLower.includes("2026") ||
+                            titleLower.includes("2025");
 
-    if (!isFresherRole) {
-      return {
-        score: 0,
-        salary: "Not Disclosed",
-        experience: "Unverified YOE",
-        workMode: "N/A",
-        summary: "REJECTED: Title does not match entry-level engineering role pattern.",
-        matchingSkills: "None",
-        missingSkills: "Requires Gemini API key for accurate evaluation"
-      };
-    }
+    // Standard software / tech engineering titles
+    const isTechRole = titleLower.includes("engineer") ||
+                       titleLower.includes("developer") ||
+                       titleLower.includes("sde") ||
+                       titleLower.includes("analyst") ||
+                       titleLower.includes("programmer") ||
+                       titleLower.includes("qa") ||
+                       titleLower.includes("testing") ||
+                       titleLower.includes("support") ||
+                       titleLower.includes("consultant");
 
     let mode = "On-site / Hybrid";
     if (titleLower.includes("remote") || (job.location && job.location.toLowerCase().includes("remote"))) {
       mode = "Remote (India)";
     }
 
+    if (isDirectFresher) {
+      return {
+        score: 90,
+        salary: "Standard Fresher Package (3.5 - 7.5 LPA)",
+        experience: "Fresher / 0-1 YOE",
+        workMode: mode,
+        summary: `Strong fresher match: ${job.title}`,
+        matchingSkills: "Entry-level Software Engineering / CS Fundamentals",
+        missingSkills: "None"
+      };
+    }
+
+    if (isTechRole) {
+      return {
+        score: 80,
+        salary: "Not Disclosed",
+        experience: "Fresher / Entry Level",
+        workMode: mode,
+        summary: `Eligible engineering role: ${job.title}`,
+        matchingSkills: "Software Development / Problem Solving",
+        missingSkills: "Verify specific job requirements on portal"
+      };
+    }
+
+    // Default eligible score for jobs found from our targeted searches
     return {
-      score: 88,
+      score: 75,
       salary: "Not Disclosed",
-      experience: "Fresher / 0-1 YOE",
+      experience: "0-1 YOE",
       workMode: mode,
-      summary: `Matched entry-level engineering role: ${job.title}.`,
-      matchingSkills: job.searchRole || "Entry-level engineering keywords matched",
+      summary: `Matched target keyword search: ${job.title}`,
+      matchingSkills: "Relevant role profile match",
       missingSkills: "None"
     };
   }

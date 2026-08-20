@@ -16,16 +16,20 @@ const ExamDriveSearch = {
 
     const siteClusters = [
       {
-        query: "(site:tcs.com OR site:tcsion.com OR site:nextstep.tcs.com OR site:infosys.com OR site:accenture.com OR site:wipro.com OR site:capgemini.com) (\"Off Campus\" OR \"Assessment Drive\" OR \"Hiring Drive\" OR \"NQT\" OR \"InfyTQ\") 2026 Freshers",
-        name: "Official Enterprise Portals"
+        query: '"TCS NQT" OR "TCS iON" (2026 OR 2025 OR Fresher OR "Off Campus")',
+        name: "TCS iON / TCS NQT"
       },
       {
-        query: "(site:unstop.com OR site:naukri.com OR site:dare2compete.com) (\"Off Campus Drive\" OR \"Hiring Drive\" OR \"Assessment Drive\" OR \"NQT\") Freshers (2026 OR 2025)",
+        query: '(site:unstop.com OR site:dare2compete.com) ("Hiring Challenge" OR "Off Campus Drive" OR "Assessment Drive")',
         name: "Unstop / Campus Portals"
       },
       {
-        query: "(\"TCS NQT\" OR \"TCS iON\" OR \"InfyTQ\" OR \"HackWithInfy\" OR \"Wipro NLTH\" OR \"Accenture Assessment Drive\" OR \"Capgemini Excellence Drive\" OR \"EY Technology Analyst Drive\") (Registration OR \"Apply Now\" OR \"Deadline\" OR \"Register\") (2026 OR 2025)",
-        name: "National Drive Alerts"
+        query: '("Accenture" OR "Capgemini" OR "Infosys" OR "Cognizant" OR "Wipro") ("Assessment Drive" OR "National Qualifier" OR "Off Campus Drive" OR "Excellence Drive") 2026',
+        name: "Enterprise National Drives"
+      },
+      {
+        query: '"Off Campus Drive" ("2026 Batch" OR "2025 Batch" OR "Fresher") Engineering India',
+        name: "National Off-Campus Alerts"
       }
     ];
 

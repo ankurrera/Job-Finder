@@ -38,6 +38,7 @@ const ApplicationTracker = {
     } else {
       sheet.clear();
       sheet.clearFormats();
+      sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).clearDataValidations();
     }
 
     sheet.appendRow(this.HEADERS);

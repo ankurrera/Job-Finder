@@ -11,52 +11,44 @@ const NaukriSearch = {
     const freshJobs = [];
     const seenSet = new Set(seenJobIds);
 
-    const roleClusters = [
-      '"Software Engineer" OR "Associate Software Engineer" OR "System Engineer" OR "Software Developer" (Fresher OR "2026 Batch" OR "2025 Batch" OR "Entry Level" OR "0-1 Year") -Senior -Lead -Manager -Architect',
-      '"Full Stack" OR "Backend Engineer" OR "Frontend Engineer" OR "Python Developer" (Fresher OR "2026 Batch" OR "Entry Level") -Senior -Lead -Manager',
-      '"AI Engineer" OR "Generative AI" OR "LLM Engineer" OR "ML Engineer" (Fresher OR "Entry Level" OR "2026 Batch") -Senior -Lead',
-      '"TCS" OR "Accenture" OR "Capgemini" OR "Infosys" OR "Wipro" OR "HCL" OR "LTIMindtree" ("Associate Software Engineer" OR "System Engineer" OR "Technology Analyst" OR "Graduate Trainee" OR "Software Engineer") Fresher India'
+    const searchFeeds = [
+      { query: 'site:naukri.com ("Software Engineer" OR "Developer" OR "Fresher" OR "Trainee") India', name: "Naukri" },
+      { query: 'site:indeed.co.in ("Fresher" OR "Associate Software Engineer" OR "Junior Developer") India', name: "Indeed" },
+      { query: 'site:wellfound.com ("Software Engineer" OR "Full Stack" OR "AI Engineer") India', name: "Wellfound" },
+      { query: 'site:instahyre.com ("Fresher" OR "Software Engineer" OR "Python Developer") India', name: "Instahyre" },
+      { query: 'site:unstop.com ("Software Engineer" OR "Hiring" OR "Graduate Engineer Trainee" OR "2026 Batch")', name: "Unstop" },
+      { query: '("TCS" OR "Accenture" OR "Capgemini" OR "Infosys" OR "Wipro" OR "Cognizant") ("Off Campus" OR "Fresher" OR "Associate Software Engineer") India', name: "MNC Enterprise" }
     ];
 
-    const siteClusters = [
-      { domainQuery: "(site:naukri.com OR site:indeed.co.in)", name: "Naukri/Indeed" },
-      { domainQuery: "(site:wellfound.com OR site:instahyre.com OR site:glassdoor.co.in)", name: "Wellfound/Instahyre" },
-      { domainQuery: "(site:myworkdayjobs.com OR site:unstop.com OR site:dare2compete.com)", name: "Workday/Unstop" }
-    ];
+    for (let s = 0; s < searchFeeds.length; s++) {
+      const feed = searchFeeds[s];
+      try {
+        Utilities.sleep(150);
 
-    for (let s = 0; s < siteClusters.length; s++) {
-      const site = siteClusters[s];
-      for (let c = 0; c < roleClusters.length; c++) {
-        const roleQuery = roleClusters[c];
+        const query = encodeURIComponent(feed.query);
+        const rssUrl = `https://news.google.com/rss/search?q=${query}+when:1d&hl=en-IN&gl=IN&ceid=IN:en`;
 
-        try {
-          Utilities.sleep(150);
+        const response = UrlFetchApp.fetch(rssUrl, {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+          },
+          muteHttpExceptions: true
+        });
 
-          const query = encodeURIComponent(`${site.domainQuery} (${roleQuery}) India`);
-          const rssUrl = `https://news.google.com/rss/search?q=${query}+when:1d&hl=en-IN&gl=IN&ceid=IN:en`;
+        if (response.getResponseCode() === 200) {
+          const xml = response.getContentText();
+          const items = this.parseXml(xml, feed.query, feed.name);
 
-          const response = UrlFetchApp.fetch(rssUrl, {
-            headers: {
-              "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
-            },
-            muteHttpExceptions: true
-          });
-
-          if (response.getResponseCode() === 200) {
-            const xml = response.getContentText();
-            const items = this.parseXml(xml, roleQuery, site.name);
-
-            for (let j = 0; j < items.length; j++) {
-              const job = items[j];
-              if (!GeminiMatcher.isSeniorRole(job) && !seenSet.has(job.id)) {
-                seenSet.add(job.id);
-                freshJobs.push(job);
-              }
+          for (let j = 0; j < items.length; j++) {
+            const job = items[j];
+            if (!GeminiMatcher.isSeniorRole(job) && !seenSet.has(job.id)) {
+              seenSet.add(job.id);
+              freshJobs.push(job);
             }
           }
-        } catch (err) {
-          console.error(`Error querying RSS for ${site.name}: ${err.toString()}`);
         }
+      } catch (err) {
+        console.error(`Error querying RSS for ${feed.name}: ${err.toString()}`);
       }
     }
 

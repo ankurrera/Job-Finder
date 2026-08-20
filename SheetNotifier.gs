@@ -99,6 +99,7 @@ const SheetNotifier = {
     if (sheet) {
       sheet.clear();
       sheet.clearFormats();
+      sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).clearDataValidations();
     } else {
       sheet = spreadsheet.insertSheet(sheetName);
     }
@@ -106,6 +107,7 @@ const SheetNotifier = {
     sheet.appendRow(this.HEADERS);
     this.formatHeader(sheet);
 
+    // Apply validation dropdown strictly to Column 8 (Status)
     const rule = SpreadsheetApp.newDataValidation()
       .requireValueInList(this.STATUSES, true)
       .setAllowInvalid(true)
@@ -125,6 +127,7 @@ const SheetNotifier = {
     console.log(`📊 Initialized Google Sheet Dashboard: ${spreadsheet.getUrl()}`);
     return spreadsheet.getUrl();
   },
+
 
   /**
    * Identifies competitive exams, national hiring tests & off-campus assessment drives
@@ -189,6 +192,16 @@ const SheetNotifier = {
       const rowRange = sheet.getRange(lastRow, 1, 1, row.length);
       rowRange.setVerticalAlignment("middle").setFontSize(10);
       sheet.setRowHeight(lastRow, 28);
+
+      // Clear any stray validation from columns 1-7 (e.g. Location column)
+      sheet.getRange(lastRow, 1, 1, 7).clearDataValidations();
+
+      // Ensure status dropdown is strictly on Column 8 (Status)
+      const statusRule = SpreadsheetApp.newDataValidation()
+        .requireValueInList(this.STATUSES, true)
+        .setAllowInvalid(true)
+        .build();
+      sheet.getRange(lastRow, 8).setDataValidation(statusRule);
 
       for (let c = 0; c < row.length; c++) {
         sheet.getRange(lastRow, c + 1).setHorizontalAlignment(this.ALIGNMENTS[c]);

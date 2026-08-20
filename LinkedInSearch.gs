@@ -12,10 +12,14 @@ const LinkedInSearch = {
     const seenSet = new Set(seenJobIds);
 
     const roleClusters = [
-      '("Software Engineer" OR "Associate Software Engineer" OR "Software Developer" OR "SDE") AND (Fresher OR "Entry Level" OR "2026 Batch" OR "Graduate Trainee") NOT Senior NOT Lead NOT Manager NOT Architect NOT Staff',
-      '("Full Stack Engineer" OR "Backend Engineer" OR "Frontend Engineer" OR "Python Developer") AND (Fresher OR "Entry Level" OR "0-1 Year") NOT Senior NOT Lead NOT Manager',
-      '("AI Engineer" OR "Generative AI Engineer" OR "LLM Engineer" OR "Prompt Engineer" OR "ML Engineer") AND (Fresher OR "Entry Level" OR "2026 Batch") NOT Senior NOT Lead',
-      '("System Engineer" OR "Technology Analyst" OR "Graduate Trainee Engineer" OR "Junior Software Engineer") AND (TCS OR Accenture OR Capgemini OR Infosys OR Wipro OR HCL OR "LTI Mindtree" OR Cognizant OR EY OR IBM)'
+      "Software Engineer Fresher",
+      "Associate Software Engineer",
+      "Graduate Trainee Engineer",
+      "Junior Software Engineer",
+      "Full Stack Developer Fresher",
+      "Python Developer Fresher",
+      "AI Engineer Entry Level",
+      "SDE 1 Fresher"
     ];
 
     const locList = ["India"];
@@ -25,9 +29,9 @@ const LinkedInSearch = {
       for (let c = 0; c < roleClusters.length; c++) {
         const roleQuery = roleClusters[c];
         try {
-          Utilities.sleep(400);
+          Utilities.sleep(300);
 
-          const url = `https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=${encodeURIComponent(roleQuery)}&location=${encodeURIComponent(location)}&f_TPR=r86400&f_E=1,2&start=0`;
+          const url = `https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=${encodeURIComponent(roleQuery)}&location=${encodeURIComponent(location)}&f_TPR=r86400&start=0`;
           
           const options = {
             method: "GET",
